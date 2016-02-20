@@ -1,18 +1,15 @@
 package com.artem.learningclient;
 
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
-import android.view.View;
 
 import com.artem.drawing.DrawingRawData;
 import com.artem.drawing.MotionData;
@@ -37,30 +34,22 @@ public class DrawingProcessor extends Thread {
     private Long lastDraw;
     private RectF dirtyRect;
 
-    private Bitmap bitmap;
     private Path path = new Path();
 
     private long lastTime;
 
-//    private BlockingQueue<Runnable> in = new LinkedBlockingQueue<>();
 
-    public DrawingProcessor(DrawingRawData data, int width, int height) {
+    public DrawingProcessor(DrawingRawData data) {
         this.data = data;
         this.lastTime = System.currentTimeMillis();
-
-        Bitmap.Config conf = Bitmap.Config.ARGB_8888;
-        bitmap = Bitmap.createBitmap(width, height, conf);
-        bitmap.eraseColor(Color.WHITE);
     }
 
+    @SuppressWarnings("InfiniteLoopStatement")
     public void run() {
         while (true) {
             try {
                 Thread.sleep(DRAW_INTERVAL_MILLIS);
                 drawIfNecessary();
-//                Runnable runnable = in.take();
-//                if (in.isEmpty())
-//                    runnable.run();
             } catch (Exception e) {
                 // ignore
             }
@@ -69,36 +58,14 @@ public class DrawingProcessor extends Thread {
 
     public void setSurface(final SurfaceHolder holder) {
         initSurface(holder);
-//        in.add(new Runnable() {
-//            @Override
-//            public void run() {
-//                initSurface(holder);
-//            }
-//        });
     }
 
     public void clearSurface() {
         Log.d("DrawingProcessor", "clearSurface");
         holder = null;
-//        in.add(new Runnable() {
-//            @Override
-//            public void run() {
-//                Log.d("DrawingProcessor", "clearSurface");
-//                holder = null;
-//            }
-//        });
     }
 
-//    public void awake() {
-//        in.add(new Runnable() {
-//            @Override
-//            public void run() {
-//                drawIfNecessary();
-//            }
-//        });
-//    }
-
-    public boolean onTouch(View v, MotionEvent event) {
+    public boolean onTouch(MotionEvent event) {
         boolean processed;
         long start = System.currentTimeMillis();
         switch (event.getAction()) {
@@ -184,9 +151,6 @@ public class DrawingProcessor extends Thread {
         updateDirtyRectAndBitmap(dirtyRect, newMotions);
 
         MotionData lastMotion = newMotions[newMotions.length - 1];
-        boolean lastMotionIsUp = lastMotion.motion == MotionData.MotionType.Up;
-//        boolean doDraw = (now - lastDraw >= DRAW_INTERVAL_MILLIS) || lastMotionIsUp;
-//        if (doDraw) {
         draw(dirtyRect);
         nextMotionIdx += newMotions.length;
         lastDraw = now;
@@ -195,7 +159,6 @@ public class DrawingProcessor extends Thread {
     }
 
     private void updateDirtyRectAndBitmap(RectF dirtyRect, MotionData[] newMotions) {
-        MotionData prev = null;
         for (MotionData event : newMotions) {
             dirtyRect.set(
                     Math.min(dirtyRect.left, event.x),
@@ -212,35 +175,7 @@ public class DrawingProcessor extends Thread {
                     path.lineTo(event.x, event.y);
                     break;
             }
-
-            circle(bitmap, Math.round(event.x), Math.round(event.y), HALF_STROKE_WIDTH);
-/*
-            if (prev != null)
-                for (Point p : interpolate(new Point((int) event.x, (int) event.y), new Point((int) prev.x, (int) prev.y), HALF_STROKE_WIDTH)) {
-                    circle(bitmap, p.x, p.y, HALF_STROKE_WIDTH);
-                }
-*/
-            prev = event;
         }
-    }
-
-    private Point[] interpolate(Point p1, Point p2, int maxDistance) {
-        if (distance(p1.x, p1.y, p2.x, p2.y) <= maxDistance)
-            return new Point[0];
-
-        Point middle = new Point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
-        Point[] left = interpolate(p1, middle, maxDistance);
-        Point[] right = interpolate(middle, p2, maxDistance);
-
-        Point[] res = new Point[left.length + right.length + 1];
-        System.arraycopy(left, 0, res, 0, left.length);
-        res[left.length] = middle;
-        System.arraycopy(right, 0, res, left.length + 1, right.length);
-        return res;
-    }
-
-    private float distance(float x1, float y1, float x2, float y2) {
-        return (float) Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
     }
 
     private void initSurface(SurfaceHolder holder) {
@@ -270,7 +205,6 @@ public class DrawingProcessor extends Thread {
                 (int) (dirtyRect.bottom + HALF_STROKE_WIDTH)
         );
         Canvas canvas = holder.lockCanvas(dirty);
-//        canvas.drawBitmap(bitmap, dirty, dirty, paint);
 
         paint.setColor(Color.WHITE);
         canvas.drawPaint(paint);
@@ -279,14 +213,6 @@ public class DrawingProcessor extends Thread {
         holder.unlockCanvasAndPost(canvas);
         Log.d("DrawingProcessor", "drawing:    " + elapsedTime() + ": duration = " + (System.currentTimeMillis() - start) + "; " + dirty);
     }
-
-    private void circle(Bitmap bitmap, int centerX, int centerY, int rad) {
-        for (int x = centerX - rad; x < centerX + rad; x++)
-            for (int y = centerY - rad; y < centerY + rad; y++)
-//                if (distance(x, y, centerX, centerY) <= rad)
-                bitmap.setPixel(x, y, Color.BLACK);
-    }
-
 
     private synchronized long elapsedTime() {
         long now = System.currentTimeMillis();

@@ -26,7 +26,7 @@ public class DrawingSurfaceView extends SurfaceView implements SurfaceHolder.Cal
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        drawingProcessor = new DrawingProcessor(rawData, getWidth(), getHeight());
+        drawingProcessor = new DrawingProcessor(rawData);
         drawingProcessor.start();
     }
 
@@ -40,7 +40,7 @@ public class DrawingSurfaceView extends SurfaceView implements SurfaceHolder.Cal
         if (event.getPointerCount() > 1) {
             return false;
         }
-        return drawingProcessor.onTouch(this, event);
+        return drawingProcessor.onTouch(event);
     }
 
     @Override
